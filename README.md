@@ -4,7 +4,7 @@ Code repository for master thesis
 
 *"Novel computational methods for the detection of Pseudomonas aeruginosa viruses" - June 2021, KU Leuven*
 
-Thesis research conducted at the lab of Computational Systems Biology (prof. Vera van Noort) and Lab of Gene Technology (prof. Rob Lavigne) under daily supervision by Cédric Lood.
+Thesis research conducted at the lab of Computational Systems Biology (prof. Vera van Noort) and Lab of Gene Technology (prof. Rob Lavigne) under daily supervision of Cédric Lood.
 
 ---
 The project consist of bacterial genome **assembly** and annotation, followed by the exploration of two novel approaches for identifying prophages.
