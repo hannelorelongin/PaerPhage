@@ -11,7 +11,7 @@ Information regarding the version and dependencies of the two tools can be found
 ```
 roary -e --mafft -v -p {threads} {locationGFF}
 ```
-locationGFF = location of genome annotations in GFF format, when executed as in Snakefile this equals "prokka/allGFF/\*.gff"
+locationGFF = location of genome annotations in GFF format, when executed as in Snakefile this equals *prokka/allGFF/\*.gff*
 
 ## Step 2: IQTree - create tree
 
