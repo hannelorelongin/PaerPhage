@@ -1,0 +1,28 @@
+configfile: "config.yml"
+workdir: config["wd"]
+
+range = [*range(500, 506), *range(507, 510), 512, *range(514,519), *range(523,525), *range(526,548), *range(550,554), *range(555,566)]
+contaminated = [506,510,511,513,519,520,521,522,525,548,549,554]
+cleanAntiBio = ["PaLo" + str(i) for i in range(500,566) if i not in contaminated]
+ncbi = ["PAO1", "PA7", "PA14", "LESB58"]
+paired = ["PaLo3","PaLo4","PaLo8","PaLo9","PaLo11","PaLo12","PaLo30","PaLo32","PaLo33","PaLo34","PaLo38","PaLo39","PaLo40","PaLo41","PaLo42","PaLo43","PaLo44","PaLo45","PaLo46","PaLo47"]
+allTree = cleanAntiBio+ncbi+paired
+
+rule all:
+	input:		
+		##Prokka annotation
+		expand("prokka/{sample}/{sample}.gbk",sample=allTree)
+	
+rule prokka:
+	input:
+		"genomes/{sample}.fasta"
+	output:
+		"prokka/{sample}/{sample}.gbk"
+	threads: 
+		16
+	conda:
+		"envs/prokkaEnv.yml"
+	shell:
+		"prokka --cpus {threads} --kingdom Bacteria --genus Pseudomonas --species aeruginosa --strain {wildcards.sample} "
+		" --outdir prokka/{wildcards.sample} --prefix {wildcards.sample} --locustag {wildcards.sample} --force {input}"
+		
