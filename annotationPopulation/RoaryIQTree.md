@@ -3,7 +3,7 @@
 
 Relies on succesful annotation of all genomes as executed with the Snakefile.
 
-Information regarding the version and dependencies of the two tools can be found in their environment files (*tool*.yml)
+Information regarding the version and dependencies of the two tools can be found in their environment files (envs/*tool*.yml)
 
 
 ## Step 1: Roary - create core genome alignment
