@@ -7,7 +7,7 @@ Code repository for master thesis
 Thesis research conducted at the lab of Computational Systems Biology (prof. Vera van Noort) and Lab of Gene Technology (prof. Rob Lavigne) under daily supervision of Cédric Lood.
 
 ---
-The project consist of bacterial genome **assembly**, **annotation and population exploration**, followed by the exploration of two novel approaches for identifying prophages.
+The project consist of bacterial genome **assembly**, then **annotation and population exploration**, followed by the exploration of two novel approaches for identifying prophages.
 One method exploits the availability of long reads and its capability to highlight **structural variations** in genomes. 
 The other strategy utilizes **viromics** datasets to pin down regions of possible viral origin.
 
