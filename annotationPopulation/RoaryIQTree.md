@@ -1,4 +1,4 @@
-# Commands for core genome alignment and phylogenetic inference
+# Commands for core genome alignment & phylogenetic inference
 
 
 Relies on succesful annotation of all genomes as executed with the Snakefile.
