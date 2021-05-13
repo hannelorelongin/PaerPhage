@@ -1,4 +1,4 @@
-# Single use commans to generate the phylogenetic tree 
+# Single use commans for core genome alignment and phylogenetic inference
 
 
 Relies on succesful annotation of all genomes as executed with the Snakefile.
