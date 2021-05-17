@@ -1,0 +1,309 @@
+configfile: "config.yml"
+workdir: config["wd"]
+
+AntiBio = ["PaLo" + str(i) for i in range(500,566)]
+reads = ["nanopore","illumina"]
+assem = ["flye","unicyclerN","spades"]
+assemfu = ["flye","unicyclerN"]
+
+##Sample exceptions
+	##Contaminated samples, upon assessment QC Illumina (Kraken, genus Pseudomonas < 78% of all reads)
+contReads = [506, 510, 511, 513, 519, 520, 521, 522, 548, 549]
+
+##Assemblies shouldn't happen on contaminated samples
+nonCont = ["PaLo" + str(i) for i in range(500,566) if i not in contReads]
+
+rule all:
+	input:	
+		##Preprocessing Illumina reads: QC, trim, taxonomic classification	
+		expand("qc/illumina/pre/{sample}/{sample}R1_fastqc.html",sample=AntiBio),
+		expand("illumina/clean/{sample}_U.fastq.gz",sample=AntiBio),
+		expand("qc/illumina/post/{sample}/{sample}_U_fastqc.html",sample=AntiBio),
+		expand("qc/illumina/kraken/{sample}_report.txt",sample=AntiBio),
+		##Preprocessing Nanopore reads: deduplication, filter, QC, taxonomic classification
+		expand("nanopore/clean/{sample}_dedupl.fastq.gz",sample=AntiBio),	
+		expand("nanopore/clean/{sample}.fastq.gz",sample=AntiBio),
+		expand("qc/nanopore/post/{sample}/Weighted_HistogramReadlength.png",sample=AntiBio),	
+		expand("qc/nanopore/kraken/{sample}_report.txt", sample=AntiBio),
+		##Visualisation of taxonomic classification
+		expand("qc/{read}/kraken/{sample}_krona.html",read=reads,sample=AntiBio),
+		##Assemblies - Flye PaLo542 fails (too little reads)
+		expand("assembly/unicyclerN/{sample}/assembly.gfa", sample=nonCont),		
+		expand("assembly/spades/{sample}/contigs.fasta", sample=nonCont),
+		expand("assembly/flye/{sample}/assembly.fasta",sample=nonCont),
+		##QC of assemblies: metrics, visual and taxonomy - for all non contaminated reads, will fail for Flye assembly of PaLo542 (non-existent)
+		expand("qc/asm/quast/{sample}_spades/",sample=nonCont),
+		expand("qc/asm/quast/{sample}_{asm}/",asm=assemfu,sample=nonCont),
+		expand("qc/asm/bandage/{sample}/{sample}_unicyclerN.png",sample=nonCont),
+		expand("qc/asm/kraken/{sample}_spades_report.txt",sample=nonCont),
+		expand("qc/asm/kraken/{sample}_{asm}_report.txt",asm=assemfu,sample=nonCont),
+		expand("qc/asm/kraken/{sample}_{asm}_krona.html",asm=assem,sample=nonCont)	
+
+###########################
+#   PREPROCESSING READS   #
+###########################
+
+rule init_qc:
+	input:
+		R1 = "illumina/raw/{sample}R1.fastq.gz",
+		R2 = "illumina/raw/{sample}R2.fastq.gz"
+	output:
+		R1qc = multiext("qc/illumina/pre/{sample}/{sample}R1_fastqc",".html",".zip"),
+		R2qc = multiext("qc/illumina/pre/{sample}/{sample}R2_fastqc",".html",".zip")
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o qc/illumina/pre/{wildcards.sample} {input.R1} &&"
+		"fastqc -t {threads} -o qc/illumina/pre/{wildcards.sample} {input.R2}"
+
+rule trimm_illu:
+	input:	
+		R1 = "illumina/raw/{sample}R1.fastq.gz",
+		R2 = "illumina/raw/{sample}R2.fastq.gz"
+	output:
+		P1 = "illumina/clean/{sample}_1P.fastq.gz",
+		P2 = "illumina/clean/{sample}_2P.fastq.gz",
+		U1 = temp("illumina/clean/{sample}_1U.fastq.gz"),
+		U2 = temp("illumina/clean/{sample}_2U.fastq.gz"),
+		U = "illumina/clean/{sample}_U.fastq.gz"
+	threads:
+		config["threads"]
+
+	conda:
+		"envs/trimmEnv.yml"
+	shell:
+		"trimmomatic PE -threads {threads} {input.R1} {input.R2} -baseout illumina/clean/{wildcards.sample}.fastq.gz "
+		"ILLUMINACLIP:snake/assets/adapters/NexteraPE-PE.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36 &&"
+		"cat illumina/clean/{wildcards.sample}_1U.fastq.gz illumina/clean/{wildcards.sample}_2U.fastq.gz > illumina/clean/{wildcards.sample}_U.fastq.gz"
+	
+rule nanodedup:
+	input:
+		"nanopore/raw/{sample}.fastq.gz"
+	output:
+		Dedup = "nanopore/clean/{sample}_dedupl.fastq.gz",
+		Report = "qc/nanopore/post/{sample}/duplReport.txt"
+	conda:
+		"envs/seqkitEnv.yml"
+	shell:
+		"dupl=$(zcat {input} | grep read | sort | uniq -c | awk '$1!=1' | wc -l) && " 
+		"tot=$(zcat {input} | grep read | wc -l) && "
+		"echo Duplication levels of {wildcards.sample} >> qc/nanopore/post/{wildcards.sample}/duplReport.txt && "
+		"echo duplicated reads: $dupl >> qc/nanopore/post/{wildcards.sample}/duplReport.txt && "
+		"echo total reads: $tot >>  qc/nanopore/post/{wildcards.sample}/duplReport.txt && "
+		"zcat {input} | seqkit rmdup -o {output.Dedup}"	
+
+rule nanofilt:
+	input: 
+		"nanopore/clean/{sample}_dedupl.fastq.gz"
+	output:
+		Filt = "nanopore/clean/{sample}.fastq.gz"	
+	conda:
+		"envs/nanofiltEnv.yml"
+	shell:
+		"zcat {input} | NanoFilt -q 10 -l 500 > nanopore/clean/{wildcards.sample}.fastq  && "
+		"gzip nanopore/clean/{wildcards.sample}.fastq"
+		
+rule nanoplot:
+	input:
+		"nanopore/clean/{sample}.fastq.gz"
+	output:
+		"qc/nanopore/post/{sample}/Weighted_HistogramReadlength.png"
+	threads:
+		config["threads"]
+	conda:
+		"envs/nanoplotEnv.yml"
+	shell: 
+		"NanoPlot -t {threads} -o qc/nanopore/post/{wildcards.sample} --fastq {input}"
+
+rule post_qc:
+	input:
+		P1 = "illumina/clean/{sample}_1P.fastq.gz",
+		P2 = "illumina/clean/{sample}_2P.fastq.gz",
+		U = "illumina/clean/{sample}_U.fastq.gz"
+	output:
+		P1qc = multiext("qc/illumina/post/{sample}/{sample}_1P_fastqc",".html",".zip"),
+		P2qc = multiext("qc/illumina/post/{sample}/{sample}_2P_fastqc",".html",".zip"),
+		U = multiext("qc/illumina/post/{sample}/{sample}_U_fastqc",".html",".zip")
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o qc/illumina/post/{wildcards.sample} {input.P1} &&"
+		"fastqc -t {threads} -o qc/illumina/post/{wildcards.sample} {input.P2} &&"
+		"fastqc -t {threads} -o qc/illumina/post/{wildcards.sample} {input.U}"
+		
+rule kraken_illu:
+	input:
+		P1 = "illumina/clean/{sample}_1P.fastq.gz",
+		P2 = "illumina/clean/{sample}_2P.fastq.gz",
+	output:	
+		"qc/illumina/kraken/{sample}_report.txt"
+	threads:
+		config["threads"]
+	conda:
+		"envs/krakenEnv.yml"
+	shell:
+		"/mnt/data/kraken2/kraken2 --db /mnt/data/kraken2/bv --report {output} --threads {threads} --paired {input.P1} {input.P2} "
+		
+rule kraken_nano:
+	input:
+		"nanopore/clean/{sample}.fastq.gz"
+	output:	
+		"qc/nanopore/kraken/{sample}_report.txt"
+	threads:
+		config["threads"]
+	conda:
+		"envs/krakenEnv.yml"
+	shell:
+		"/mnt/data/kraken2/kraken2 --db /mnt/data/kraken2/bv --report {output} --threads {threads} {input} "
+		
+rule krona_reads:
+	input:
+		"qc/{read}/kraken/{sample}_report.txt"
+	output:
+		krona = temp("qc/{read}/kraken/{sample}_report.krona"),
+		html = "qc/{read}/kraken/{sample}_krona.html"
+	conda:
+		"envs/kronaEnv.yml"
+	wildcard_constraints:
+         	read ='[^(asm)]'
+	shell:
+		"kreport2krona.py -r {input} -o {output.krona} && "
+		"ktImportText {output.krona} -o {output.html} "
+
+
+###########################
+#        ASSEMBLIES       #
+###########################
+
+
+rule unicycler_normal:
+	input: 
+		P1 = "illumina/clean/{sample}_1P.fastq.gz",
+		P2 = "illumina/clean/{sample}_2P.fastq.gz",
+		U = "illumina/clean/{sample}_U.fastq.gz",
+		L = "nanopore/clean/{sample}.fastq.gz"
+	output:
+		multiext("assembly/unicyclerN/{sample}/assembly",".gfa",".fasta")
+	threads:
+		config["threads"]
+	conda:
+		"envs/unicyclerEnv.yml"
+	shell:
+		"unicycler -1 {input.P1} -2 {input.P2} -s {input.U} -l {input.L} "
+		"-o assembly/unicyclerN/{wildcards.sample} -t {threads} --mode normal"
+
+rule spades:
+	input:
+		P1 = "illumina/clean/{sample}_1P.fastq.gz",
+		P2 = "illumina/clean/{sample}_2P.fastq.gz",
+		U = "illumina/clean/{sample}_U.fastq.gz"
+	output: 
+		"assembly/spades/{sample}/contigs.fasta",
+		"assembly/spades/{sample}/assembly_graph.fastg"
+	threads:
+		config["threads"]
+	conda:
+		"envs/spadesEnv.yml"	
+	shell:
+		"spades.py -1 {input.P1} -2 {input.P2} -s {input.U} "
+		"-o assembly/spades/{wildcards.sample} -t {threads} --careful"
+
+rule flye:
+	input:
+		"nanopore/clean/{sample}.fastq.gz"
+	output: 
+		"assembly/flye/{sample}/assembly.fasta",
+		"assembly/flye/{sample}/assembly_graph.gfa"
+	threads:
+		config["threads"]
+	conda:
+		"envs/flyeEnv.yml"	
+	shell:
+		"flye --nano-raw {input} "
+		"-o assembly/flye/{wildcards.sample} -t {threads} --plasmids"
+
+###########################
+#       ASSEMBLY QC       #
+###########################
+
+rule quast_spades:
+	input:
+		"assembly/spades/{sample}/contigs.fasta"
+	output:
+		directory("qc/asm/quast/{sample}_spades/"),
+	threads:
+		config["threads"]
+	conda:
+		"envs/quastEnv.yml"
+	shell:
+		"quast --min-contig 0 --threads {threads} -o {output} {input} "
+		
+rule quast_flyUni:
+	input:
+		"assembly/{asm}/{sample}/assembly.fasta"
+	output:
+		directory("qc/asm/quast/{sample}_{asm}/")
+	threads:
+		config["threads"]
+	conda:
+		"envs/quastEnv.yml"
+	shell:
+		"quast --min-contig 0 --threads {threads} -o {output} {input}"
+
+rule bandage:
+	input:
+		Spades = "assembly/spades/{sample}/assembly_graph.fastg",
+		Flye = "assembly/flye/{sample}/assembly_graph.gfa",
+		UniN = "assembly/unicyclerN/{sample}/assembly.gfa"
+	output:
+		Spades = "qc/asm/bandage/{sample}/{sample}_spades.png",
+		Flye = "qc/asm/bandage/{sample}/{sample}_flye.png",
+		UniN = "qc/asm/bandage/{sample}/{sample}_unicyclerN.png"
+	threads:
+		config["threads"]
+	conda:
+		"envs/bandageEnv.yml"
+	shell:
+		"Bandage image {input.Spades} {output.Spades} --colour random --nodewidth 50 --edgelen 10 --width 375 && "
+ 		"Bandage image {input.Flye} {output.Flye} --colour uniform --unicolpos \"#e227ff\" --unicolneg \"#e227ff\" --iter 4 --width 375 && "
+		"Bandage image {input.UniN} {output.UniN} --colour uniform --unicolpos \"#2bdf87\" --unicolneg \"#2bdf87\" --iter 4 --width 375 "
+
+rule kraken_spades:
+	input:
+		"assembly/spades/{sample}/contigs.fasta"
+	output:	
+		"qc/asm/kraken/{sample}_spades_report.txt"
+	threads:
+		config["threads"]
+	conda:
+		"envs/krakenEnv.yml"
+	shell:
+		"/mnt/data/kraken2/kraken2 --db /mnt/data/kraken2/bv --report {output} --threads {threads} {input} "	
+
+rule kraken_flyUni:
+	input:
+		"assembly/{asm}/{sample}/assembly.fasta"
+	output:	
+		"qc/asm/kraken/{sample}_{asm}_report.txt"
+	threads:
+		config["threads"]
+	conda:
+		"envs/krakenEnv.yml"
+	shell:
+		"/mnt/data/kraken2/kraken2 --db /mnt/data/kraken2/bv --report {output} --threads {threads} {input} "	
+
+rule krona_3asm:
+	input:
+		"qc/asm/kraken/{sample}_{asm}_report.txt"
+	output:
+		tem = temp("qc/asm/kraken/{sample}_{asm}_report.krona"),
+		fin = "qc/asm/kraken/{sample}_{asm}_krona.html"
+	conda:
+		"envs/kronaEnv.yml"
+	shell:
+		"kreport2krona.py -r {input} -o {output.tem} && "
+		"ktImportText {output.tem} -o {output.fin} "	
