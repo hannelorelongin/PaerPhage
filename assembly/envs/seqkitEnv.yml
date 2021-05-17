@@ -1,0 +1,7 @@
+name: seqkitEnv
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - seqkit=0.14.0=0
+prefix: /home/hannelore/miniconda3/envs/seqkitEnv
