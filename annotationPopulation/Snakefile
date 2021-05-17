@@ -1,7 +1,6 @@
 configfile: "config.yml"
 workdir: config["wd"]
 
-range = [*range(500, 506), *range(507, 510), 512, *range(514,519), *range(523,525), *range(526,548), *range(550,554), *range(555,566)]
 contaminated = [506,510,511,513,519,520,521,522,525,548,549,554]
 cleanAntiBio = ["PaLo" + str(i) for i in range(500,566) if i not in contaminated]
 ncbi = ["PAO1", "PA7", "PA14", "LESB58"]
