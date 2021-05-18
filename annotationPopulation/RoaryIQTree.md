@@ -16,6 +16,7 @@ locationGFF = location of genome annotations in GFF format, when executed as in 
 ## Step 2: IQTree - create tree
 
 ```
-iqtree -s {input} -B 1000 -T AUTO -ntmax {threads} -v
+iqtree -s {input} -B 1000 -T AUTO -ntmax {threads} -o {outgroup} -v
 ```
 input = core genome alignment produced with Roary
+outgroup = PA7, a known genetic outlier of the species
