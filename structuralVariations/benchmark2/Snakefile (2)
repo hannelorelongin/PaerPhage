@@ -1,0 +1,83 @@
+workdir: "../"
+mapped = ["g03r04", "g04r03", "g09r08", "g11r12", "g30r34", "g32r33", "g33r32", "g38r45", "g39r44", "g40r47", "g43r42", "g44r39", "g46r41"]
+tools = ["minimap","ngmlr"]
+
+rule all:
+	input:
+		expand("{tool}/{sample}.sorted.bam.bai", tool=tools, sample=mapped),
+		expand("sniffles/{tool}/{sample}.vcf", tool=tools, sample=mapped),
+		expand("{tool}/{sample}.count", tool=tools, sample=mapped),
+		expand("{tool}/{sample}.precision", tool=tools, sample=mapped),
+		expand("{tool}/{sample}.precisionType", tool=tools, sample=mapped),
+		expand("compareVCF/{sample}.log", sample=mapped)
+
+rule sam2bam:
+	input:
+		"{tool}/{sample}.sam"
+	output:
+		bam = temp("{tool}/{sample}.temp.bam"),
+		sorted = "{tool}/{sample}.sorted.bam",
+		index = "{tool}/{sample}.sorted.bam.bai"
+	threads:
+		16
+	conda:
+		"envs/samtoolsEnv.yml"
+	shell:
+		"samtools view -S -b {input} > {output.bam} && "
+		"samtools sort {output.bam} -o {output.sorted} && "
+		"samtools index {output.sorted}"
+
+rule sniffles:
+	input:
+		"{tool}/{sample}.sorted.bam"
+	output:
+		"sniffles/{tool}/{sample}.vcf"
+	threads: 
+		16
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"sniffles -m {input} -t {threads} -v {output}"
+
+rule count:
+	input:
+		"sniffles/{tool}/{sample}.vcf"
+	output:
+		"{tool}/{sample}.count"
+	threads:
+		16
+	shell:
+		"grep -v ^## {input} | cut -f 8 | cut -f 9 -d ';' | sort | uniq -c > {output}"
+		
+rule precision:
+	input:
+		"sniffles/{tool}/{sample}.vcf"
+	output:
+		"{tool}/{sample}.precision"
+	threads:
+		16
+	shell:
+		"grep -v ^## {input} | cut -f 8 | cut -f 1 -d ';' | sort | uniq -c > {output}"
+		
+rule precisionType:
+	input:
+		"sniffles/{tool}/{sample}.vcf"
+	output:
+		"{tool}/{sample}.precisionType"
+	threads:
+		16
+	shell:
+		"grep -v ^## {input} | cut -f 8 | cut -f 1,9 -d ';' | sort | uniq -c > {output}"
+		
+rule compareVcf:
+	input:
+		mini = "sniffles/minimap/{sample}.vcf",
+		ngmlr = "sniffles/ngmlr/{sample}.vcf"
+	output:
+		"compareVCF/{sample}.log"
+	conda:
+		"envs/vcftoolsEnv.yml"
+	threads:
+		16
+	shell:
+		"vcftools --vcf {input.mini} --diff {input.ngmlr} --diff-site --out compareVCF/{wildcards.sample}"
