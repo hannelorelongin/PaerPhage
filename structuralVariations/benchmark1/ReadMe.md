@@ -6,4 +6,4 @@ This folder contains the necessary scripts for:
 - extracting relevant parameters from alignment files (aggregate.sh, envs/samtoolsEnv.yml)
 - statistical analysis of long read alignment (statsLongReadAligners.R)
 
-usedTools : graphmap, minimap, ngmlr
+*usedTools* : graphmap, minimap, ngmlr
