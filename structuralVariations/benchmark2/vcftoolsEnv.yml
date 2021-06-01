@@ -1,0 +1,11 @@
+name: vcftoolsEnv
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - libstdcxx-ng=9.1.0=hdf63c60_0
+  - vcftools=0.1.16=he513fc3_4
+  - zlib=1.2.11=h7b6447c_3
+prefix: /home/hannelore/miniconda3/envs/vcftoolsEnv
