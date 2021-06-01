@@ -1,0 +1,57 @@
+configfile: "config.yml"
+
+SAMPLES = ["PaLo3","PaLo4","PaLo8","PaLo9","PaLo11","PaLo12","PaLo30","PaLo32","PaLo33","PaLo34","PaLo38","PaLo39","PaLo40","PaLo41","PaLo42","PaLo43","PaLo44","PaLo45","PaLo46","PaLo47"]
+
+rule all:
+    input:
+    	expand("/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sam", sample=SAMPLES),
+	expand("/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sorted.bam.bai", sample=SAMPLES),
+	expand("/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.coverage", sample=SAMPLES)
+
+####################################
+## ALIGNMENT OF PHAGE SHORT READS ##
+####################################
+
+rule bwa_mem:
+	input:
+		R1 = "/mnt/data/data_variantAnalysis/viromics/viralReads_10pt/allR1.fastq",
+		R2 = "/mnt/data/data_variantAnalysis/viromics/viralReads_10pt/allR2.fastq",
+		genome = "/mnt/data/data_variantAnalysis/genomes/{sample}.fasta"
+	output:
+		"/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sam"
+	threads:
+		config['threads']
+	conda:
+		"envs/bwaEnv.yml"
+	shell:
+		"bwa index {input.genome} && "
+		"bwa mem -t {threads} {input.genome} {input.R1} {input.R2} > {output} "
+
+rule bam2sam:
+	input:
+		"/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sam"
+	output:
+		bam = temp("/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.bam"),
+		sorted = "/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sorted.bam",
+		indexed = "/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sorted.bam.bai"
+	threads:
+		config['threads']
+	conda:
+		"envs/samtoolsV1_11Env.yml"
+	shell:
+		"samtools view -S -b {input} > {output.bam} && "
+		"samtools sort {output.bam} -o {output.sorted} && "
+		"samtools index {output.sorted} "
+
+rule coverage:
+	input:
+		"/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.sorted.bam"
+	output:
+		"/mnt/data/data_variantAnalysis/viromics/trial_10pt/01_Reads2All/all2{sample}.coverage"
+	threads:
+		config['threads']
+	conda:
+		"envs/samtoolsV1_11Env.yml"
+	shell:
+		"samtools coverage {input} -o {output} "
+		
