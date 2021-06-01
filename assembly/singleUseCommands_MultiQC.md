@@ -5,6 +5,8 @@ Used for both short read QC and assembly QC.
 
 Information regarding the version and dependencies of the tool can be found in the environment file (envs/multiqcEnv.yml)
 
+## MultiQC command:
+
 ```
 multiqc -d {foldersToSearch}
 ```
