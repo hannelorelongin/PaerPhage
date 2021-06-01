@@ -1,0 +1,13 @@
+name: ngmlrEnv
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - libstdcxx-ng=9.1.0=hdf63c60_0
+  - ngmlr=0.2.7=he513fc3_2
+  - sniffles=1.0.12=h8b12597_1
+  - tclap=1.2.1=h470a237_1
+  - zlib=1.2.11=h7b6447c_3
+prefix: /home/hannelore/miniconda3/envs/ngmlrEnv

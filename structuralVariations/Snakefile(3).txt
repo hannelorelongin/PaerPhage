@@ -1,0 +1,49 @@
+workdir: "../"
+palo = ["PaLo3","PaLo4","PaLo11","PaLo12","PaLo39","PaLo44","PaLo40","PaLo47","PaLo46",PaLo41"]
+
+rule all:
+	input:
+		expand("ngmlr/{sample}.sam", sample=palo),
+		expand("ngmlr/{sample}.sorted.bam.bai", sample=palo),
+		expand("sniffles/{sample}.vcf", sample=palo)
+
+rule ngmlr_uniN:
+	input:
+		reads = "/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"ngmlr/{sample}.sam"
+	threads:
+		16
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"ngmlr -t {threads} -r {input.genUniN} -q {input.reads} -o {output} -x ont"
+
+rule sam2bam:
+	input:
+		"ngmlr/{sample}.sam"
+	output:
+		bam = temp("ngmlr/{sample}.temp.bam"),
+		sorted = "ngmlr/{sample}.sorted.bam",
+		index = "ngmlr/{sample}.sorted.bam.bai"
+	threads:
+		16
+	conda:
+		"envs/samtoolsEnv.yml"
+	shell:
+		"samtools view -S -b {input} > {output.bam} && "
+		"samtools sort {output.bam} -o {output.sorted} && "
+		"samtools index {output.sorted}"
+
+rule sniffles:
+	input:
+		"ngmlr/{sample}.sorted.bam"
+	output:
+		"sniffles/{sample}.vcf"
+	threads: 
+		16
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"sniffles -m {input} -t {threads} -v {output}"
