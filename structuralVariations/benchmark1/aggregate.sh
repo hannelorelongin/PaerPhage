@@ -25,4 +25,4 @@ do
 		done
 		cd ..
 	fi
-done > MapAlignStats.txt
+done > mapAlignStats.txt
