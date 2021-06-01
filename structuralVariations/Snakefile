@@ -9,7 +9,7 @@ rule all:
 
 rule ngmlr_uniN:
 	input:
-		reads = "/nanopore/clean/{sample}.fastq.gz",
+		reads = "nanopore/clean/{sample}.fastq.gz",
 		genUniN = "assembly/unicyclerN/{sample}/assembly.fasta"
 	output:
 		"ngmlr/{sample}.sam"
