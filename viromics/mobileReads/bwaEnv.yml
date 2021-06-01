@@ -1,0 +1,11 @@
+name: bwaEnv
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - bwa=0.7.17=hed695b0_7
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - perl=5.26.2=h14c3975_0
+  - zlib=1.2.11=h7b6447c_3
+prefix: /home/hannelore/miniconda3/envs/bwaEnv
