@@ -1,0 +1,234 @@
+configfile: "config.yml"
+workdir: config["wd"]
+test = ["PaLo500", "PaLo501", "PaLo502", "PaLo503", "PaLo504", "PaLo505", "PaLo545", "PaLo550", "PaLo564", "PaLo565"]
+
+######################################
+#      Running alignment tools       #
+######################################
+# 1 - on long read assemblies (Flye) #
+# 2 - on hybrid assemblies (UniN)    #
+######################################
+
+rule all:
+	input:
+		##long read assemblies - Flye
+		expand("flye/mini/mini_{sample}.sam",sample=test),
+		expand("flye/ngmlr/ngmlr_{sample}.sam",sample=test),
+		expand("flye/graphC/graphC_{sample}.sam",sample=test),
+		expand("flye/graphNC/graphNC_{sample}.sam",sample=test),
+		##hybrid assemblies - UniN
+		expand("unicyclerN/mini/mini_{sample}.sam",sample=test),
+		expand("unicyclerN/ngmlr/ngmlr_{sample}.sam",sample=test),
+		expand("unicyclerN/graphC/graphC_{sample}.sam",sample=test),
+		expand("unicyclerN/graphNC/graphNC_{sample}.sam",sample=test),
+		##comparing SVs called
+		expand("unicyclerN/miniS/miniS_{sample}.sam",sample=test),
+		expand("unicyclerN/miniS/miniS_{sample}.sorted.bam",sample=test),
+		expand("sniffles/miniS_uniN_{sample}.vcf",sample=test),
+		expand("unicyclerN/miniS/miniS_{sample}.sorted.bam.bai",sample=test)
+
+## 1 - long read assemblies
+
+rule minimap2_flye:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genFlye = "/mnt/data/data_antibiolab/assembly/flye/{sample}/assembly.fasta"
+	output:
+		"flye/mini/mini_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/flye/mini/mini_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/minimapEnv.yml"
+	shell:
+		"minimap2 -ax map-ont -t {threads} {input.genFlye} {input.reads} > {output}"
+
+rule ngmlr_flye:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genFlye = "/mnt/data/data_antibiolab/assembly/flye/{sample}/assembly.fasta"
+	output:
+		"flye/ngmlr/ngmlr_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/flye/ngmlr/ngmlr_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"ngmlr -t {threads} -r {input.genFlye} -q {input.reads} -o {output} -x ont"
+		
+rule graphC_flye:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genFlye = "/mnt/data/data_antibiolab/assembly/flye/{sample}/assembly.fasta"
+	output:
+		"flye/graphC/graphC_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/flye/graphC/graphC_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/graphmapEnv.yml"
+	shell:
+		"graphmap align -C -t {threads} -r {input.genFlye} -d {input.reads} -o {output}"
+		
+rule graphNC_flye:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genFlye = "/mnt/data/data_antibiolab/assembly/flye/{sample}/assembly.fasta"
+	output:
+		"flye/graphNC/graphNC_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/flye/graphNC/graphNC_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/graphmapEnv.yml"
+	shell:
+		"graphmap align -t {threads} -r {input.genFlye} -d {input.reads} -o {output}"	
+		
+## 2 - hybrid assemblies UniN
+
+rule minimap2_uniN:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "/mnt/data/data_antibiolab/assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"unicyclerN/mini/mini_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/unicyclerN/mini/mini_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/minimapEnv.yml"
+	shell:
+		"minimap2 -ax map-ont -t {threads} {input.genUniN} {input.reads} > {output}"
+
+rule ngmlr_uniN:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "/mnt/data/data_antibiolab/assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"unicyclerN/ngmlr/ngmlr_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/unicyclerN/ngmlr/ngmlr_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"ngmlr -t {threads} -r {input.genUniN} -q {input.reads} -o {output} -x ont"
+		
+rule graphC_uniN:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "/mnt/data/data_antibiolab/assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"unicyclerN/graphC/graphC_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/unicyclerN/graphC/graphC_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/graphmapEnv.yml"
+	shell:
+		"graphmap align -C -t {threads} -r {input.genUniN} -d {input.reads} -o {output}"
+		
+rule graphNC_uniN:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "/mnt/data/data_antibiolab/assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"unicyclerN/graphNC/graphNC_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/unicyclerN/graphNC/graphNC_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/graphmapEnv.yml"
+	shell:
+		"graphmap align -t {threads} -r {input.genUniN} -d {input.reads} -o {output}"			
+		
+	
+		
+######################################
+#        Comparing SVs called        #
+######################################
+# On hybrid assemblies (UniN):       #
+#  - with NGMLR		      #
+#  - with MiniMap2		      #
+######################################
+
+rule mini_sniff:
+	input:
+		reads = "/mnt/data/data_antibiolab/nanopore/clean/{sample}.fastq.gz",
+		genUniN = "/mnt/data/data_antibiolab/assembly/unicyclerN/{sample}/assembly.fasta"
+	output:
+		"unicyclerN/miniS/miniS_{sample}.sam"
+	benchmark:
+        	repeat("benchmarks/unicyclerN/miniS/miniS_{sample}_benchmark.txt",3)
+	threads:
+		config["threads"]
+	conda:
+		"envs/minimapEnv.yml"
+	shell:
+		"minimap2 --MD -ax map-ont -t {threads} {input.genUniN} {input.reads} > {output}"
+
+rule sam2bam:
+	input:
+		ngmlr = "unicyclerN/ngmlr/ngmlr_{sample}.sam",
+		mini = "unicyclerN/mini/mini_{sample}.sam",
+		miniS = "unicyclerN/miniS/miniS_{sample}.sam"
+	output:
+		ng_bam = temp("unicyclerN/ngmlr/ngmlr_{sample}.bam"),
+		mi_bam = temp("unicyclerN/mini/mini_{sample}.bam"),
+		ngmlr = "unicyclerN/ngmlr/ngmlr_{sample}.sorted.bam",
+		mini = "unicyclerN/mini/mini_{sample}.sorted.bam",
+		miS_bam = temp("unicyclerN/miniS/miniS_{sample}.bam"),
+		miniS = "unicyclerN/miniS/miniS_{sample}.sorted.bam"
+	threads:
+		config["threads"]
+	conda:
+		##can not use more recent version of Samtools (v1.11 because incompatible with NGMLR: has underflow issue when calculating MAPQ, get negative ones --> crashes newer samtools)
+		"envs/samtoolsEnv.yml"
+	shell:
+		"samtools view -S -b {input.ngmlr} > {output.ng_bam} && "
+		"samtools sort {output.ng_bam} -o {output.ngmlr} && "
+		"samtools view -S -b {input.mini} > {output.mi_bam} && "
+		"samtools sort {output.mi_bam} -o {output.mini} && "	
+		"samtools view -S -b {input.miniS} > {output.miS_bam} && "
+		"samtools sort {output.miS_bam} -o {output.miniS}"	
+
+rule index:
+	input:
+		miniS = "unicyclerN/miniS/miniS_{sample}.sorted.bam",
+		ngmlr = "unicyclerN/ngmlr/ngmlr_{sample}.sorted.bam"
+	output:
+		miniS = "unicyclerN/miniS/miniS_{sample}.sorted.bam.bai",
+		ngmlr = "unicyclerN/ngmlr/ngmlr_{sample}.sorted.bam.bai"
+	threads:
+		config["threads"]
+	conda:
+		"envs/samtoolsEnv.yml"
+	shell:
+		"samtools index {input.miniS} && "
+		"samtools index {input.ngmlr}"
+
+
+rule sniffles:
+	input:	
+		ngmlr = "unicyclerN/ngmlr/ngmlr_{sample}.sorted.bam",
+		miniS = "unicyclerN/miniS/miniS_{sample}.sorted.bam"
+	output:
+		ngmlr = "sniffles/ngmlr_uniN_{sample}.vcf",
+		miniS = "sniffles/miniS_uniN_{sample}.vcf"	
+	threads: 
+		config["threads"]
+	conda:
+		"envs/ngmlrEnv.yml"
+	shell:
+		"sniffles -m {input.ngmlr} -t {threads} -v {output.ngmlr} && "
+		"sniffles -m {input.miniS} -t {threads} -v {output.miniS}"
+	
