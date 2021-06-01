@@ -7,5 +7,6 @@ This folder contains the necessary scripts for:
 - generating coverage plots with Samtools (singleUseCommands_SamtoolsCoverage.md, envs/samtoolsV1_11.yml)
 
 *usedTools1* : bedtools, bwa, samtools
+
 *usedTools2* : bwa, samtoolsV1_11
 
