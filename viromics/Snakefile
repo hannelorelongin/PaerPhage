@@ -200,14 +200,14 @@ rule regions:
 	input:
 		"viralReads_{auth}/alignment/all2{genome}.sorted.bam"
 	output:
-		cov = "viralReads_{auth}/coverage/all2{genome}.coverage",
-		hiCovP = "viralReads_{auth}/coverage/all2{genome}.highCoverage.pos",
-		hiCovR = "viralReads_{auth}/coverage/all2{genome}.highCoverage.region",
-		inf = "viralReads_{auth}/coverage/all2{genome}.highCoverage.info"
+		dep = "viralReads_{auth}/coverage/all2{genome}.depth",
+		hiDepP = "viralReads_{auth}/coverage/all2{genome}.highDepth.pos",
+		hiDepR = "viralReads_{auth}/coverage/all2{genome}.highDepth.region",
+		inf = "viralReads_{auth}/coverage/all2{genome}.highDepth.info"
 	threads: 
 		config["threads"]
 	conda: 
 		"envs/samtoolsV1_11Env.yml"
 	shell:
-		"bash snake/assets/scripts/findCov.sh {input} {output.cov} {output.hiCovP} {output.hiCovR} {output.inf}"
+		"bash snake/assets/scripts/findCov.sh {input} {output.dep} {output.hiDepP} {output.hiDepR} {output.inf}"
 
