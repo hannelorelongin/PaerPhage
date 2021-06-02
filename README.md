@@ -12,4 +12,4 @@ One method exploits the availability of long reads and its capability to highlig
 The other strategy utilizes **viromics** datasets to pin down regions of possible viral origin.
 
 ---
-Code is deposited in distinct folders for each seperate stage.
+Code is deposited in distinct folders for each separate stage.
