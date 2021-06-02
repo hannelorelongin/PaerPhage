@@ -1,0 +1,213 @@
+configfile: "config.yml"
+workdir: config['wd']
+
+READSt = ["SRR8150" + str(i) for i in range(804,898)] 
+READSl = ["SRR329495", "SRR329650", "SRR329651"]
+READSc = ["SRR97011" + str(i) for i in range(75,91)]
+GENOMES = ["PaLo3","PaLo4","PaLo8","PaLo9","PaLo11","PaLo12","PaLo30","PaLo32","PaLo33","PaLo34","PaLo38","PaLo39","PaLo40","PaLo41","PaLo42","PaLo43","PaLo44","PaLo45","PaLo46","PaLo47"]
+
+rule all:
+    input:
+    	##Analysis of Tariq data
+        expand("viralReads_{auth}/qc/reads/fastqc/pre/{sample}/{sample}_2_fastqc.html", auth="Tariq",sample=READSt),
+        expand("viralReads_{auth}/clean/{sample}_U.fastq.gz", auth="Tariq",sample=READSt),
+	expand("viralReads_{auth}/qc/reads/fastqc/post/{sample}/{sample}_U_fastqc.html", auth="Tariq",sample=READSt),
+	expand("viralReads_{auth}/alignment/all2{genome}.sam", auth="Tariq",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Tariq",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Tariq",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Tariq",genome=GENOMES),
+	##Analysis of Lei data
+	expand("viralReads_Lei/qc/reads/fastqc/pre/{sample}/{sample}_fastqc.html", sample=READSl),
+	expand("viralReads_Lei/clean/{sample}_bad.fastq",sample=READSl),
+	expand("viralReads_Lei/qc/reads/fastqc/post/{sample}/{sample}_good_fastqc.html", sample=READSl),
+	expand("viralReads_Lei/alignment/all2{genome}.sam",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Lei",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Lei",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Lei",genome=GENOMES),
+	##Analysis of Coffey data
+	expand("viralReads_{auth}/qc/reads/fastqc/pre/{sample}/{sample}_2_fastqc.html", auth="Coffey",sample=READSc),
+        expand("viralReads_{auth}/clean/{sample}_U.fastq.gz", auth="Coffey",sample=READSc),
+	expand("viralReads_{auth}/qc/reads/fastqc/post/{sample}/{sample}_U_fastqc.html", auth="Coffey",sample=READSc),
+	expand("viralReads_{auth}/alignment/all2{genome}.sam", auth="Coffey",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Coffey",genome=GENOMES),
+	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Coffey",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Coffey",genome=GENOMES),
+
+####################################
+##  QUALITY CHECK OF SHORT READS  ##
+####################################	
+
+rule init_qc:
+	input:
+		R1 = "viralReads_{auth}/raw/{sample}_1.fastq.gz",
+		R2 = "viralReads_{auth}/raw/{sample}_2.fastq.gz"
+	output:
+		R1qc = multiext("viralReads_{auth}/qc/reads/fastqc/pre/{sample}/{sample}_1_fastqc",".html",".zip"),
+		R2qc = multiext("viralReads_{auth}/qc/reads/fastqc/pre/{sample}/{sample}_2_fastqc",".html",".zip")
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o viralReads_{wildcards.auth}/qc/reads/fastqc/pre/{wildcards.sample} {input.R1} &&"
+		"fastqc -t {threads} -o viralReads_{wildcards.auth}/qc/reads/fastqc/pre/{wildcards.sample} {input.R2}"
+		
+rule init_qc454:
+	input:
+		R = "viralReads_Lei/raw/{sample}.fastq.gz"
+	output:
+		Rqc = multiext("viralReads_Lei/qc/reads/fastqc/pre/{sample}/{sample}_fastqc",".html",".zip")
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o viralReads_Lei/qc/reads/fastqc/pre/{wildcards.sample} {input.R}"
+		
+rule trimmomatic:
+	input:	
+		R1 = "viralReads_{auth}/raw/{sample}_1.fastq.gz",
+		R2 = "viralReads_{auth}/raw/{sample}_2.fastq.gz"
+	output:
+		P1 = "viralReads_{auth}/clean/{sample}_1P.fastq.gz",
+		P2 = "viralReads_{auth}/clean/{sample}_2P.fastq.gz",
+		U1 = temp("viralReads_{auth}/clean/{sample}_1U.fastq.gz"),
+		U2 = temp("viralReads_{auth}/clean/{sample}_2U.fastq.gz"),
+		U = "viralReads_{auth}/clean/{sample}_U.fastq.gz"
+	threads:
+		config["threads"]
+	conda:
+		"envs/trimmEnv.yml"
+	shell:
+		"trimmomatic PE -threads {threads} {input.R1} {input.R2} -baseout viralReads_{wildcards.auth}/clean/{wildcards.sample}.fastq.gz "
+		"ILLUMINACLIP:snake/assets/adapters/NexteraPE-PE.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 &&"
+		"cat viralReads_{wildcards.auth}/clean/{wildcards.sample}_1U.fastq.gz viralReads_{wildcards.auth}/clean/{wildcards.sample}_2U.fastq.gz > "
+		" viralReads_{wildcards.auth}/clean/{wildcards.sample}_U.fastq.gz"
+		
+rule prinseq_454:
+	input:
+		"viralReads_Lei/raw/{sample}.fastq"
+	output:
+		good = "viralReads_Lei/clean/{sample}_good.fastq",
+		bad = "viralReads_Lei/clean/{sample}_bad.fastq"
+	threads:
+		config["threads"]
+	conda:
+		"envs/prinseqEnv.yml"
+	shell:
+		"prinseq-lite.pl -verbose -log -fastq {input} -out_good viralReads_Lei/clean/{wildcards.sample}_good "
+		"-out_bad viralReads_Lei/clean/{wildcards.sample}_bad -derep 1245 -lc_method entropy -lc_threshold 50 "
+		"-trim_qual_right 15 -trim_qual_left 15 -trim_qual_type mean -trim_qual_rule lt -trim_qual_rule lt "
+		"-trim_qual_window 2 -trim_tail_left 5 -trim_tail_right 5 -min_len 60 -min_qual_mean 15 -ns_max_p 1 -rm_header"
+
+rule post_qc:
+	input:
+		P1 = "viralReads_{auth}/clean/{sample}_1P.fastq.gz",
+		P2 = "viralReads_{auth}/clean/{sample}_2P.fastq.gz",
+		U = "viralReads_{auth}/clean/{sample}_U.fastq.gz"
+	output:
+		P1qc = multiext("viralReads_{auth}/qc/reads/fastqc/post/{sample}/{sample}_1P_fastqc",".html",".zip"),
+		P2qc = multiext("viralReads_{auth}/qc/reads/fastqc/post/{sample}/{sample}_2P_fastqc",".html",".zip"),
+		Uqc = multiext("viralReads_{auth}/qc/reads/fastqc/post/{sample}/{sample}_U_fastqc",".html",".zip"),
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o viralReads_{wildcards.auth}/qc/reads/fastqc/post/{wildcards.sample} {input.P1} &&"
+		"fastqc -t {threads} -o viralReads_{wildcards.auth}/qc/reads/fastqc/post/{wildcards.sample} {input.P2} &&"
+		"fastqc -t {threads} -o viralReads_{wildcards.auth}/qc/reads/fastqc/post/{wildcards.sample} {input.U}"
+		
+rule post_qc454:
+	input:
+		"viralReads_Lei/clean/{sample}_good.fastq"
+	output:
+		multiext("viralReads_Lei/qc/reads/fastqc/post/{sample}/{sample}_good_fastqc",".html",".zip")
+	threads:
+		config["threads"]
+	conda:
+		"envs/fastqcEnv.yml"
+	shell:
+		"fastqc -t {threads} -o viralReads_Lei/qc/reads/fastqc/post/{wildcards.sample} {input}"
+				
+################################
+##   ALIGNMENT TO GENOMES    ##
+###############################
+
+rule bwa_mem:
+	input:
+		P1 = "viralReads_{auth}/clean/all_1P.fastq.gz",
+		P2 = "viralReads_{auth}/clean/all_2P.fastq.gz",
+		genome = "/mnt/data/data_variantAnalysis/genomes/{genome}.fasta"
+	output:
+		"viralReads_{auth}/alignment/all2{genome}.sam"
+	threads:
+		config['threads']
+	conda:
+		"envs/bwaEnv.yml"
+	shell:
+		"bwa index {input.genome} && "
+		"bwa mem -t {threads} {input.genome} {input.P1} {input.P2} > {output} "
+		
+rule bwa_mem454:
+	input:
+		R = "viralReads_Lei/clean/all.fastq.gz",
+		genome = "/mnt/data/data_variantAnalysis/genomes/{genome}.fasta"
+	output:
+		"viralReads_Lei/alignment/all2{genome}.sam"
+	threads:
+		config['threads']
+	conda:
+		"envs/bwaEnv.yml"
+	shell:
+		"bwa index {input.genome} && "
+		"bwa mem -t {threads} {input.genome} {input.R} > {output} "
+
+rule sam2bam:
+	input:
+		"viralReads_{auth}/alignment/all2{genome}.sam"
+	output:
+		bam = temp("viralReads_{auth}/alignment/all2{genome}.bam"),
+		sorted = "viralReads_{auth}/alignment/all2{genome}.sorted.bam",
+		indexed = "viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai"
+	threads:
+		config['threads']
+	conda:
+		"envs/samtoolsV1_11Env.yml"
+	shell:
+		"samtools view -S -b {input} > {output.bam} && "
+		"samtools sort {output.bam} -o {output.sorted} && "
+		"samtools index {output.sorted} "
+
+rule coverage:
+	input:
+		"viralReads_{auth}/alignment/all2{genome}.sorted.bam"
+	output:
+		"viralReads_{auth}/alignment/all2{genome}.coverage"
+	threads:
+		config['threads']
+	conda:
+		"envs/samtoolsV1_11Env.yml"
+	shell:
+		"samtools coverage {input} -o {output} "
+		
+
+####################################
+##       EXTRACTING REGIONS       ##
+####################################		
+		
+rule regions:
+	input:
+		"viralReads_{auth}/alignment/all2{genome}.sorted.bam"
+	output:
+		cov = "viralReads_{auth}/coverage/all2{genome}.coverage",
+		hiCovP = "viralReads_{auth}/coverage/all2{genome}.highCoverage.pos",
+		hiCovR = "viralReads_{auth}/coverage/all2{genome}.highCoverage.region",
+		inf = "viralReads_{auth}/coverage/all2{genome}.highCoverage.info"
+	threads: 
+		config["threads"]
+	conda: 
+		"envs/samtoolsV1_11Env.yml"
+	shell:
+		"bash snake/assets/scripts/findCov.sh {input} {output.cov} {output.hiCovP} {output.hiCovR} {output.inf}"
+
