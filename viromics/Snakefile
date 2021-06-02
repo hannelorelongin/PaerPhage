@@ -15,7 +15,7 @@ rule all:
 	expand("viralReads_{auth}/alignment/all2{genome}.sam", auth="Tariq",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Tariq",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Tariq",genome=GENOMES),
-	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Tariq",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highDepth.info", auth="Tariq",genome=GENOMES),
 	##Analysis of Lei data
 	expand("viralReads_Lei/qc/reads/fastqc/pre/{sample}/{sample}_fastqc.html", sample=READSl),
 	expand("viralReads_Lei/clean/{sample}_bad.fastq",sample=READSl),
@@ -23,7 +23,7 @@ rule all:
 	expand("viralReads_Lei/alignment/all2{genome}.sam",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Lei",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Lei",genome=GENOMES),
-	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Lei",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highDepth.info", auth="Lei",genome=GENOMES),
 	##Analysis of Coffey data
 	expand("viralReads_{auth}/qc/reads/fastqc/pre/{sample}/{sample}_2_fastqc.html", auth="Coffey",sample=READSc),
         expand("viralReads_{auth}/clean/{sample}_U.fastq.gz", auth="Coffey",sample=READSc),
@@ -31,7 +31,7 @@ rule all:
 	expand("viralReads_{auth}/alignment/all2{genome}.sam", auth="Coffey",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.sorted.bam.bai", auth="Coffey",genome=GENOMES),
 	expand("viralReads_{auth}/alignment/all2{genome}.coverage", auth="Coffey",genome=GENOMES),
-	expand("viralReads_{auth}/coverage/all2{genome}.highCoverage.info", auth="Coffey",genome=GENOMES),
+	expand("viralReads_{auth}/coverage/all2{genome}.highDepth.info", auth="Coffey",genome=GENOMES),
 
 ####################################
 ##  QUALITY CHECK OF SHORT READS  ##
