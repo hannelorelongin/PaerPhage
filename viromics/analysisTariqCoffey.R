@@ -14,7 +14,7 @@ for (i in 1:length(filelistReg)) assign(filelistReg[i], read.csv(filelistReg[i],
   ##Position based
 filelistPos = list.files(pattern="*.pos")
 for (i in 1:length(filelistPos)) assign(filelistPos[i], read.csv(filelistPos[i],sep="\t", dec = ",",header = FALSE, col.names = c("CONTIG","START","READS","DEPTH")))
-  ##Complete coverage files
+  ##Complete depth files
 filelistCov = list.files(pattern="*.depth")
 for (i in 1:length(filelistCov)) assign(filelistCov[i], read.csv(filelistCov[i],sep="\t",header = FALSE, col.names = c("CONTIG","START","DEPTH")))
 
@@ -37,7 +37,7 @@ addLength = function(df){
 }
 for(i in dflistReg) e[[i]] = addLength(e[[i]])
 
-  ##add fold change in coverage
+  ##add fold change in read depth
 addFold = function(df){
   df$fold = df$DEPTH/mean(df$DEPTH)
   return(df)
