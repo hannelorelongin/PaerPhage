@@ -1,4 +1,4 @@
-##R code to extract information from the regions - Tariq dataset
+##R code to extract information from the regions of increased read depth
 
 #########################
 #  PREPARING THE DATA   #
